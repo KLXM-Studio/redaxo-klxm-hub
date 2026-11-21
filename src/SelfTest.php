@@ -29,6 +29,7 @@ final class SelfTest
         $t->pkce();
         $t->oidc();
         $t->misc();
+        $t->hardening();
 
         return ['ok' => $t->ok, 'fails' => $t->fails];
     }
@@ -265,5 +266,91 @@ final class SelfTest
             Settings::$override = null;
             Client::$baseOverride = null;
         }
+    }
+
+    /** Regressionen aus der Sicherheitsprüfung 0.1.3 */
+    private function hardening(): void
+    {
+        // Logo: Neuaufbau statt Entfernen
+        $ns = 'xmlns="http://www.w3.org/2000/svg"';
+        $this->check('Logo: DOCTYPE in UTF-7 versteckt → abgewiesen', null === Logo::clean('<?xml version="1.0" encoding="UTF-7"?>+ADw-!DOCTYPE svg +AFs-+ADw-!ENTITY x +ACI-y+ACI-+AD4-+AF0-+AD4-<svg ' . $ns . '><path d="M0 0" fill="+ACY-x+ADs-"/></svg>'));
+        $this->check('Logo: UTF-16/NUL-Bytes → abgewiesen', null === Logo::clean("<svg $ns>\0<path d=\"M0\"/></svg>"));
+        $out = (string) Logo::clean("<svg $ns viewBox=\"0 0 8 8\" xmlns:h=\"http://www.w3.org/1999/xhtml\" xmlns:x=\"urn:&quot;&gt;&lt;img src=x onerror=alert(1)&gt;\">"
+            . '<![CDATA[</svg><img src=x onerror=alert(1)>]]><title><![CDATA[><img src=x onerror=alert(1)>]]></title>'
+            . '<h:path d="M1 1"/><path d="M0 0h8" fill="u\72l(https://evil.example/x)" stroke="#000"/><g transform="translate(1 2)"><rect width="2" height="2" fill="rgb(0,0,0)"/></g></svg>');
+        $this->check('Logo: keine CDATA, Texte, fremden Namensräume, CSS-Escapes', '' !== $out && !preg_match('~CDATA|<img|onerror|xmlns:|h:path|\\\\|evil|<title~i', $out));
+        $this->check('Logo: erlaubte Formen und Werte bleiben', str_contains($out, 'viewBox="0 0 8 8"') && str_contains($out, 'stroke="#000"') && str_contains($out, 'transform="translate(1 2)"') && str_contains($out, 'fill="rgb(0,0,0)"'));
+        $this->check('Logo: Ausgabe erneut bereinigt bleibt gleich', Logo::clean($out) === $out);
+
+        // RSA: Länge auf das Bit genau, Exponent ungerade ≥ 3
+        $k = openssl_pkey_new(['private_key_bits' => 2044, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        $ok = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        if ($k && $ok) {
+            $this->check('JWK: 2044 Bit (256 Byte) abgewiesen', null === Jwk::rsaPem(Jwk::fromRsa($k, 'a')));
+            $n = Jwk::fromRsa($ok, 'b')['n'];
+            $this->check('JWK: 2048 Bit angenommen', null !== Jwk::rsaPem(['kty' => 'RSA', 'n' => $n, 'e' => 'AQAB']));
+            $this->check('JWK: Exponent 1 bzw. gerade abgewiesen', null === Jwk::rsaPem(['kty' => 'RSA', 'n' => $n, 'e' => Jwk::b64u("\1")]) && null === Jwk::rsaPem(['kty' => 'RSA', 'n' => $n, 'e' => Jwk::b64u("\1\0")]));
+        } else {
+            $this->fails[] = 'JWK: RSA-Schlüssel erzeugen';
+        }
+
+        // Claims mit verschachtelten Werten: keine Warnung (im Modus dev wäre sie eine Ausnahme), nichts angerechnet
+        $warnings = 0;
+        set_error_handler(static function () use (&$warnings): bool {
+            ++$warnings;
+
+            return true;
+        });
+        try {
+            $amr = Client::strongAmr(['amr' => [['otp']]]);
+            $roles = Client::roles(['roles' => [['admin'], 'redaktion']]);
+            $mapped = Accounts::mapping(['roles' => [['admin']]], 0);
+        } finally {
+            restore_error_handler();
+        }
+        $this->check('Claims: verschachtelte amr/roles ohne Warnung und ohne Wirkung', 0 === $warnings && !$amr && ['redaktion'] === $roles && null === $mapped);
+
+        // E-Mail nur, wenn nicht als unbestätigt gemeldet
+        $this->check('Konto: unbestätigte E-Mail wird nicht übernommen', null === Accounts::email(['email' => 'chef@kunde.example', 'email_verified' => false])
+            && null === Accounts::email(['email' => 'chef@kunde.example', 'email_verified' => 'false']));
+        $this->check('Konto: bestätigte bzw. ohne Angabe übernommen (klein)', 'mia@example.org' === Accounts::email(['email' => 'Mia@Example.org', 'email_verified' => true])
+            && 'mia@example.org' === Accounts::email(['email' => 'mia@example.org']));
+
+        // Status-Abfrage: Nonce an der Grenze des Zeitfensters (gemerkt bei t, Zeitstempel t + 300, Wiederholung bei t + 600)
+        RateLimit::$memory = ['mon-nonce:kid:grenze' => [time() - 2 * Signature::SKEW]];
+        try {
+            $this->check('Signatur: Nonce an der Fenstergrenze noch bekannt (replay)', Api\StatusApi::seenNonce('kid', 'grenze'));
+            $this->check('Signatur: neuer Nonce frei, danach bekannt', !Api\StatusApi::seenNonce('kid', 'neu') && Api\StatusApi::seenNonce('kid', 'neu'));
+        } finally {
+            RateLimit::$memory = null;
+        }
+
+        // SSRF: private, lokale und reservierte Ziele werden vor dem Verbinden abgewiesen (ohne Netz)
+        $blocked = 0;
+        $targets = ['https://127.0.0.1/', 'https://10.1.2.3/', 'https://169.254.169.254/', 'https://100.64.0.1/', 'https://[::1]/', 'https://[::ffff:127.0.0.1]/', 'https://[fd00::1]/'];
+        foreach ($targets as $u) {
+            try {
+                Http::client(false)->request('GET', $u, ['timeout' => 1, 'max_duration' => 1])->getStatusCode();
+            } catch (\Throwable $e) {
+                $blocked += (int) str_contains($e->getMessage(), 'blocked');
+            }
+        }
+        $this->check('Abrufe: private Netze gesperrt (' . $blocked . '/' . \count($targets) . ')', \count($targets) === $blocked);
+
+        // Anmeldeseite: Link relativ (nie Host der Anfrage); offene Anmeldungen nach dem Login verworfen
+        Settings::$override = ['oidc' => ['enabled' => true, 'name' => 'Agentur Hub', 'issuer' => 'https://hub.example.org/hub', 'client_id' => 'c', 'client_secret' => 's']];
+        Client::$baseOverride = 'https://evil.example/';
+        try {
+            $html = HubAddon::injectButton('<form id="rex-form-login"><section><footer></footer></section></form>');
+            $this->check('Anmeldeseite: Einstieg relativ, ohne Host', str_contains($html, 'step=start') && !str_contains($html, 'evil.example') && !str_contains($html, '://'));
+        } finally {
+            Settings::$override = null;
+            Client::$baseOverride = null;
+        }
+        Client::resetForTest();
+        Client::$pendingMemory = ['s' => ['n' => 'n', 'v' => 'v', 'at' => time(), 'r' => 'r', 'iss' => 'i']];
+        Client::forgetPending();
+        $this->check('Anmeldung: offene Anmeldungen verworfen', [] === Client::$pendingMemory);
+        Client::$pendingMemory = null;
     }
 }

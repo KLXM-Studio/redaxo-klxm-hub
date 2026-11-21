@@ -69,7 +69,7 @@ final class Accounts
         if (null === $map) {
             throw new OidcException('role', HubAddon::t('err_role'));
         }
-        $email = \is_string($claims['email'] ?? null) && filter_var($claims['email'], FILTER_VALIDATE_EMAIL) ? mb_strtolower($claims['email']) : null;
+        $email = self::email($claims);
         $name = \is_string($claims['name'] ?? null) && '' !== trim($claims['name']) ? mb_substr(trim($claims['name']), 0, 190) : ($email ?? 'Agentur');
 
         $sql = Sql::factory();
@@ -138,6 +138,26 @@ final class Accounts
             ->update();
         UserRole::setForUser($userId, $map['roles']);
         User::clearInstance($userId);
+    }
+
+    /**
+     * E-Mail-Adresse aus dem Token – nur wenn gültig und vom Anbieter nicht als unbestätigt gemeldet (email_verified
+     * fehlt oder ist true). Eine unbestätigte Adresse wird weder Login noch E-Mail des Kontos (sonst könnte sich jemand
+     * im Hub mit fremder Adresse einen Login wie „chef@kunde.de“ verschaffen). Höchstens 191 Zeichen (Spalte).
+     *
+     * @param array<mixed> $claims
+     */
+    public static function email(array $claims): ?string
+    {
+        $e = $claims['email'] ?? null;
+        if (!\is_string($e) || \strlen($e) > 191 || !filter_var($e, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+        if (\array_key_exists('email_verified', $claims) && true !== $claims['email_verified'] && 'true' !== $claims['email_verified']) {
+            return null;
+        }
+
+        return mb_strtolower($e);
     }
 
     /** Schlüssel der Zuordnung: SHA-256 über Issuer und sub (exakt, auch bei Groß-/Kleinschreibung) */

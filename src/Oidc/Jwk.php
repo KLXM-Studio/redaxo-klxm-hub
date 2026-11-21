@@ -41,10 +41,13 @@ final class Jwk
             return null;
         }
         $n = ltrim($n, "\0");
-        if (\strlen($n) * 8 < self::RSA_MIN_BITS || \strlen($e) > 8 || '' === $e) {
+        $e = ltrim($e, "\0");
+        // Länge auf das Bit genau (256 Byte mit führenden Null-Bits wären sonst „2048 Bit“); Exponent ungerade und ≥ 3
+        $bits = '' === $n ? 0 : \strlen($n) * 8 - (8 - \strlen(decbin(\ord($n[0]))));
+        if ($bits < self::RSA_MIN_BITS || '' === $e || \strlen($e) > 8 || 0 === (\ord($e[-1]) & 1) || (1 === \strlen($e) && \ord($e) < 3)) {
             return null;
         }
-        $rsa = self::seq(self::int($n) . self::int(ltrim($e, "\0")));
+        $rsa = self::seq(self::int($n) . self::int($e));
         $algo = self::seq("\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01" . "\x05\x00");   // rsaEncryption, NULL
         $spki = self::seq($algo . "\x03" . self::len(\strlen($rsa) + 1) . "\0" . $rsa);
 

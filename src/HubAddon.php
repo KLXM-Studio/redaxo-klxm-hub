@@ -134,7 +134,7 @@ final class HubAddon extends Addon
         // dezent unter dem Formular: Trennlinie, kleiner Link mit Logo des Anbieters (Passkey/Passwort bleiben vorn)
         $logo = Logo::svg() ?? '<i class="rex-icon fa-solid fa-right-to-bracket" aria-hidden="true"></i>';
         $button = '<div class="klxm-hub-login">'
-            . '<a class="klxm-hub-login-link" href="' . escape(Client::startUri()) . '">' . $logo
+            . '<a class="klxm-hub-login-link" href="' . escape(Client::startLink()) . '">' . $logo
             . '<span>' . escape(self::t('login_button', $name)) . '</span></a>'
             . '<p class="klxm-hub-login-note">' . escape(self::t('login_note')) . '</p>'
             . '</div>';

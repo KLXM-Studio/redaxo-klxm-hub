@@ -56,6 +56,8 @@ final class LoginApi extends ApiFunction
             return self::show(HubAddon::t('err_rate_limit'), '429 Too Many Requests');
         }
         RateLimit::hit(RateLimit::ip('login'));
+        // Weiterleitungen tragen state und Redirect-URI – nie zwischenspeichern (auch nicht in Proxys)
+        Response::setHeader('Cache-Control', 'no-store');
 
         try {
             if ('start' === $step) {
@@ -126,6 +128,7 @@ final class LoginApi extends ApiFunction
     {
         $login = BackendLogin::getCurrent() ?? new BackendLogin();
         Login::regenerateSessionId();
+        Client::forgetPending();   // weitere offene Anmeldungen dieser Sitzung verfallen
         $login->setSessionVar(Login::SESSION_USER_ID, $userId);
         $login->setSessionVar(Login::SESSION_PASSWORD, null);
         $login->setSessionVar(Login::SESSION_IMPERSONATOR, null);

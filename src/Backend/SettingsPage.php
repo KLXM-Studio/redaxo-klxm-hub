@@ -76,7 +76,9 @@ final class SettingsPage
         foreach ($addr as $label => $url) {
             $rows .= '<tr><th scope="row">' . escape($label) . '</th><td><code class="klxm-hub-url">' . escape((string) $url) . '</code></td></tr>';
         }
-        $out .= new Section(title: $t('section_addresses'), body: Html::raw('<p>' . escape($t('addresses_note')) . '</p>'),
+        // ohne REX_BASE_URL hängen Redirect-URI und Einstieg am Host der Anfrage (Host-Header) – fest einstellen
+        $baseWarn = null === Core::getProject()->baseUrl ? Message::warning(escape($t('warn_no_base_url'))) : '';
+        $out .= new Section(title: $t('section_addresses'), body: Html::raw('<p>' . escape($t('addresses_note')) . '</p>' . $baseWarn),
             content: Html::raw('<table class="rex-table klxm-hub-addresses"><tbody>' . $rows . '</tbody></table>'))->render();
 
         // ---------------------------------------------------------------- Überwachung

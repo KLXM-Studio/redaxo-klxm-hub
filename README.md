@@ -32,6 +32,8 @@ php bin/console migrate
 2. **In REDAXO:** Addons → Agentur Hub → Settings: issuer (e.g. `https://hub.klxm.de/hub`), client ID, client secret,
    role for `redaktion`, “Offer sign-in via the provider” → Save (the addon checks the discovery document, otherwise
    it stays off). “Addresses for the hub” shows the exact addresses this installation expects (based on `REX_BASE_URL`).
+   **Set `REX_BASE_URL`** (e.g. in `.env.local`), otherwise the redirect URI depends on the request's Host header – the
+   settings warn about it.
    Monitoring: enter the hub's public key (`ed25519:…`), “Allow signed status requests” → Save.
 3. **In the hub:** “Check now” – the traffic light appears.
 4. **Keep an emergency admin** with password (and passkey). The addon warns when there is none.
@@ -40,19 +42,27 @@ php bin/console migrate
 
 Mapped by issuer + `sub` (table `rex_klxm_hub_identity`), never by e-mail. Created on first sign-in (optional) without
 a password and marked “Agency account”; role from claim `roles` (`admin` → admin, `redaktion` → configured role),
-synchronised on every sign-in. Existing users are never taken over. Lock them under Addons → Agentur Hub → Agency
-accounts (running sessions end immediately).
+synchronised on every sign-in. Existing users are never taken over. An e-mail address the hub reports as unverified
+(`email_verified` ≠ true) becomes neither login nor e-mail of the account. Lock accounts under Addons → Agentur Hub →
+Agency accounts (running sessions end immediately).
 
 ## Security
 
 PKCE S256, `state` bound to the backend session (single use, 10 minutes), `nonce`, RFC 9207 `iss`; ID token RS256 only
 via JWKS (key rotation: unknown `kid` → reload once), checks of `iss`, `aud`/`azp`, `exp`/`iat` (±60 s), `nonce`,
-`at_hash`, `sub`; `amr` must prove a second factor. Provider endpoints https only (http with `REX_MODE=dev`). Client
-secret encrypted with libsodium (key file outside the database) or from `KLXM_HUB_CLIENT_SECRET`. Rate limits per IP,
-log lines `klxm_hub: …` in the REDAXO system log without secrets.
+`at_hash`, `sub`; RSA keys ≥ 2048 bits (exact), odd exponent ≥ 3; `jku`/`x5u`/`jwk` headers are never used; `amr`
+must prove a second factor. Provider endpoints https only (http with `REX_MODE=dev`). Requests to the provider
+(discovery, JWKS, token, logo) never go to private, local or reserved addresses (127/8, 10/8, 172.16/12, 192.168/16,
+169.254/16, 100.64/10, ::1, fc00::/7, fe80::/10, IPv4-mapped IPv6 …); the resolved address is checked and used for the
+connection (no DNS rebinding) – exceptions: `REX_MODE=dev` or `KLXM_HUB_ALLOW_PRIVATE_NETWORK=1` (hub in your own
+network, outgoing proxy with a private address). The provider logo is rebuilt as a shapes-only SVG (no text, scripts,
+styles, references, events, foreign namespaces; UTF-8 only, no DTD) and re-sanitised on every output. Client secret
+encrypted with libsodium (key file outside the database) or from `KLXM_HUB_CLIENT_SECRET`. Rate limits per IP, log
+lines `klxm_hub: …` in the REDAXO system log without secrets.
 
 Status endpoint: off → `404`; rate limit → `429`; header format, ±300 s window, key ID, Ed25519 signature → `401`; the
-nonce is remembered only after a valid signature (replay → `401`); `200` with JSON. Error responses carry no reasons.
+nonce is remembered only after a valid signature, for 11 minutes – longer than the whole 2 × 300 s window (replay →
+`401`); `200` with JSON. Error responses carry no reasons.
 
 ## Developers
 

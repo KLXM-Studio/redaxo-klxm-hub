@@ -41,6 +41,7 @@ klxm_hub_addr_redirect = Redirect URI
 klxm_hub_addr_start = Initiate login
 klxm_hub_addr_status = Status address
 klxm_hub_addr_logout = After sign-out
+klxm_hub_warn_no_base_url = REX_BASE_URL is not set – the addresses depend on the host of each request. Please set REX_BASE_URL (e.g. in .env.local) to the address of the website so the redirect URI is always fixed.
 
 klxm_hub_section_monitor = Monitoring (signed status request)
 klxm_hub_monitor_enabled = Status request

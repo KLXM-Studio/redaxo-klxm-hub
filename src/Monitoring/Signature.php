@@ -21,6 +21,12 @@ final class Signature
     public const string PROTOCOL = 'status-v1';
     public const int SKEW = 300;
     public const int NONCE_TTL = 600;
+    /**
+     * So lange merkt sich die Website einen Nonce tatsächlich: länger als das ganze Zeitfenster (2 × SKEW = NONCE_TTL)
+     * plus Rand für Sekundengrenzen – sonst ließe sich eine Anfrage mit Zeitstempel +300 s genau an der Grenze
+     * (gemerkt bei t, wiederholt bei t + 600) noch einmal abspielen.
+     */
+    public const int NONCE_KEEP = 2 * self::SKEW + 60;
     public const int MAX_KEYS = 10;
 
     public static function base(string $method, string $host, string $pathQuery, int $ts, string $nonce): string

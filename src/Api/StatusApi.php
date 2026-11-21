@@ -53,20 +53,24 @@ final class StatusApi extends ApiFunction
         }
         $keys = array_values(array_filter(array_map(static fn (array $k): ?string => Signature::parseKey($k['key']), $s['keys'])));
         $reason = Signature::verify($h, $request->getMethod(), strtolower($request->getHttpHost()), (string) $request->server->get('REQUEST_URI', '/'), $keys,
-            static function (string $kid, string $nonce): bool {
-                $key = 'mon-nonce:' . $kid . ':' . $nonce;
-                if (RateLimit::count($key, Signature::NONCE_TTL) > 0) {
-                    return true;
-                }
-                RateLimit::hit($key);
-
-                return false;
-            });
+            self::seenNonce(...));
         if (null !== $reason) {
             Log::write('warning', 'monitor-denied', ['reason' => $reason]);
             self::send(['error' => 'unauthorized'], Response::HTTP_UNAUTHORIZED);
         }
         self::send(Status::collect($h['x-status-nonce']), Response::HTTP_OK);
+    }
+
+    /** Nonce schon verwendet? Sonst merken ({@see Signature::NONCE_KEEP}) – nur nach gültiger Signatur aufgerufen */
+    public static function seenNonce(string $kid, string $nonce): bool
+    {
+        $key = 'mon-nonce:' . $kid . ':' . $nonce;
+        if (RateLimit::count($key, Signature::NONCE_KEEP) > 0) {
+            return true;
+        }
+        RateLimit::hit($key);
+
+        return false;
     }
 
     /** @param array<string, mixed> $data */

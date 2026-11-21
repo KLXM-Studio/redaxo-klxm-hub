@@ -9,17 +9,29 @@ use Redaxo\Core\Filesystem\Path;
 
 /**
  * Logo des Anbieters für den Anmelde-Link: Discovery-Feld `logo_uri` (nicht im OIDC-Standard, optional, nur https),
- * einmal geladen, als SVG streng bereinigt (nur Formen, keine Skripte, Stile, Verweise oder Ereignisse) und in
+ * einmal geladen, als SVG streng bereinigt (nur Formen, keine Skripte, Stile, Verweise, Ereignisse oder Texte) und in
  * var/data/addons/klxm_hub/ abgelegt – die Anmeldeseite lädt nie etwas vom Anbieter nach. Ohne Logo: null.
+ *
+ * Bereinigt wird nicht durch Entfernen, sondern durch Neuaufbau: aus dem gelesenen Dokument werden nur erlaubte Elemente
+ * (Namensraum SVG) mit erlaubten Attributen und harmlosen Werten in ein neues Dokument übernommen. Namensraum-
+ * Deklarationen, CDATA, Kommentare, Entitäten und Texte gelangen so nie in die Ausgabe.
  */
 final class Logo
 {
-    private const MAX = 65536;
-    private const TAGS = ['svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'line', 'polyline', 'polygon', 'title'];
-    private const ATTRS = ['viewbox', 'd', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'y1', 'x2', 'y2', 'width', 'height', 'points',
-        'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'opacity', 'fill-opacity', 'stroke-opacity', 'transform', 'xmlns'];
+    private const int MAX = 65536;
+    private const string NS = 'http://www.w3.org/2000/svg';
+    private const array TAGS = ['svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'line', 'polyline', 'polygon'];
+    /** erlaubte Attribute (klein) → Schreibweise in der Ausgabe */
+    private const array ATTRS = ['viewbox' => 'viewBox', 'd' => 'd', 'cx' => 'cx', 'cy' => 'cy', 'r' => 'r', 'rx' => 'rx', 'ry' => 'ry',
+        'x' => 'x', 'y' => 'y', 'x1' => 'x1', 'y1' => 'y1', 'x2' => 'x2', 'y2' => 'y2', 'width' => 'width', 'height' => 'height',
+        'points' => 'points', 'fill' => 'fill', 'stroke' => 'stroke', 'stroke-width' => 'stroke-width', 'stroke-linecap' => 'stroke-linecap',
+        'stroke-linejoin' => 'stroke-linejoin', 'opacity' => 'opacity', 'fill-opacity' => 'fill-opacity', 'stroke-opacity' => 'stroke-opacity',
+        'fill-rule' => 'fill-rule', 'transform' => 'transform'];
 
-    /** Inline-SVG (dekorativ) oder null – liest nur die lokale Kopie (nie ein Abruf beim Anzeigen der Anmeldeseite) */
+    /**
+     * Inline-SVG (dekorativ) oder null – liest nur die lokale Kopie (nie ein Abruf beim Anzeigen der Anmeldeseite) und
+     * bereinigt sie bei jeder Ausgabe erneut (auch Kopien älterer Fassungen gehen so durch die aktuelle Bereinigung).
+     */
     public static function svg(): ?string
     {
         $file = self::file((string) (Settings::oidc()['issuer'] ?? ''));
@@ -28,7 +40,7 @@ final class Logo
         }
         $svg = (string) file_get_contents($file);
 
-        return '' !== $svg ? $svg : null;
+        return '' !== $svg ? self::clean($svg) : null;
     }
 
     /** Logo neu laden und ablegen (beim Speichern der Einstellungen bzw. Prüfen der Discovery); true = Logo vorhanden */
@@ -68,48 +80,64 @@ final class Logo
         return self::clean($r['body']);
     }
 
-    /** Nur erlaubte Elemente und Attribute; Farben ohne url(…). */
+    /** Nur erlaubte Elemente und Attribute mit harmlosen Werten, neu aufgebaut (siehe Klassenbeschreibung). */
     public static function clean(string $svg): ?string
     {
-        if (!str_contains($svg, '<svg') || preg_match('~<!DOCTYPE|<!ENTITY~i', $svg)) {
+        // nur UTF-8 ohne NUL und ohne DTD – auch keine über eine andere Kodierung (UTF-7, UTF-16 …) versteckte
+        if (\strlen($svg) > self::MAX || !str_contains($svg, '<svg') || str_contains($svg, "\0") || !mb_check_encoding($svg, 'UTF-8')
+            || preg_match('~<!DOCTYPE|<!ENTITY~i', $svg)
+            || (preg_match('~^\s*<\?xml\b[^>]*\bencoding\s*=\s*["\']([^"\']*)~i', $svg, $m) && 'utf-8' !== strtolower($m[1]))) {
             return null;
         }
         $doc = new \DOMDocument();
-        if (!@$doc->loadXML($svg, LIBXML_NONET)) {
+        if (!@$doc->loadXML($svg, LIBXML_NONET) || null !== $doc->doctype) {
             return null;
         }
         $root = $doc->documentElement;
-        if (!$root || 'svg' !== strtolower($root->localName)) {
+        if (!$root || !self::allowedElement($root) || 'svg' !== strtolower($root->localName)) {
             return null;
         }
-        $walk = static function (\DOMElement $el) use (&$walk): void {
-            foreach (iterator_to_array($el->childNodes) as $c) {
-                if ($c instanceof \DOMElement) {
-                    if (!\in_array(strtolower($c->localName), self::TAGS, true)) {
-                        $el->removeChild($c);
-                        continue;
-                    }
-                    $walk($c);
-                } elseif (!$c instanceof \DOMText) {
-                    $el->removeChild($c);
+        $out = new \DOMDocument('1.0', 'UTF-8');
+        $copy = static function (\DOMElement $from, \DOMNode $parent, int $depth) use (&$copy, $out): void {
+            $el = $out->createElementNS(self::NS, strtolower($from->localName));
+            foreach ($from->attributes as $a) {
+                $n = strtolower($a->localName);
+                $v = trim((string) $a->value);
+                // Attribute ohne Namensraum, nur aus der Liste; Werte nur aus Zahlen, Buchstaben und Zeichen für Pfade,
+                // Farben und Transformationen – kein url(…), var(…), keine CSS-Escapes (\), keine Skript-Adressen
+                if (null === $a->namespaceURI && isset(self::ATTRS[$n]) && \strlen($v) <= 20000
+                    && preg_match('~^[\w\s#.,%()+-]*$~', $v) && !preg_match('~url|var\(|expression|script~i', $v)) {
+                    $el->setAttribute(self::ATTRS[$n], $v);
                 }
             }
-            foreach (iterator_to_array($el->attributes) as $a) {
-                $n = strtolower($a->nodeName);
-                if (!\in_array($n, self::ATTRS, true) || preg_match('~url\(|javascript:|expression\(~i', $a->nodeValue ?? '')) {
-                    $el->removeAttribute($a->nodeName);
+            $parent->appendChild($el);
+            if ($depth >= 32) {
+                return;
+            }
+            foreach ($from->childNodes as $c) {
+                // Texte (auch CDATA), Kommentare, Anweisungen und Entitäten bleiben weg; title/desc ebenso (dekorativ)
+                if ($c instanceof \DOMElement && self::allowedElement($c) && 'svg' !== strtolower($c->localName)) {
+                    $copy($c, $el, $depth + 1);
                 }
             }
         };
-        $walk($root);
-        foreach (iterator_to_array($root->getElementsByTagName('title')) as $t) {
-            $t->parentNode?->removeChild($t);   // dekorativ – der Name steht im Text daneben
+        $copy($root, $out, 0);
+        $svgEl = $out->documentElement;
+        if (!$svgEl instanceof \DOMElement) {
+            return null;
         }
-        $root->setAttribute('class', 'klxm-hub-login-logo');
-        $root->setAttribute('aria-hidden', 'true');
-        $root->setAttribute('focusable', 'false');
-        $out = $doc->saveXML($root);
+        $svgEl->setAttribute('class', 'klxm-hub-login-logo');
+        $svgEl->setAttribute('aria-hidden', 'true');
+        $svgEl->setAttribute('focusable', 'false');
+        $res = $out->saveXML($svgEl);
 
-        return false !== $out && \strlen($out) <= self::MAX ? $out : null;
+        return false !== $res && \strlen($res) <= self::MAX ? $res : null;
+    }
+
+    /** Element aus der Liste im Namensraum SVG, ohne Präfix (ohne Namensraum nur bei Dateien ganz ohne xmlns) */
+    private static function allowedElement(\DOMElement $el): bool
+    {
+        return \in_array(strtolower($el->localName), self::TAGS, true) && \in_array($el->namespaceURI, [self::NS, null], true)
+            && '' === (string) $el->prefix;
     }
 }

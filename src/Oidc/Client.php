@@ -60,6 +60,15 @@ final class Client
         return self::backendUrl(['rex-api-call' => 'klxm_hub', 'step' => 'start']);
     }
 
+    /**
+     * Einstieg als relative Adresse (Link auf der Anmeldeseite) – hängt nie am Host der Anfrage, auch wenn REX_BASE_URL
+     * fehlt (keine Host-Header-Einschleusung in die Seite).
+     */
+    public static function startLink(): string
+    {
+        return Url::backendController(['rex-api-call' => 'klxm_hub', 'step' => 'start']);
+    }
+
     /** Für den Selbsttest: feste Basis statt Url::absoluteBase() */
     public static ?string $baseOverride = null;
 
@@ -278,6 +287,12 @@ final class Client
         return $hit;
     }
 
+    /** Alle offenen Anmeldungen der Sitzung verwerfen (nach erfolgreicher Anmeldung) */
+    public static function forgetPending(): void
+    {
+        self::setPending([]);
+    }
+
     /**
      * Rückkehr vom Anbieter: Code einlösen und ID-Token prüfen.
      *
@@ -346,11 +361,12 @@ final class Client
         if (!\is_string($c['iss'] ?? null) || !hash_equals($p['issuer'], rtrim($c['iss'], '/'))) {
             throw $fail('iss');
         }
-        $aud = \is_array($c['aud'] ?? null) ? array_map('strval', $c['aud']) : [(string) ($c['aud'] ?? '')];
+        // aud: Text oder Liste von Texten (andere Werte zählen nicht – keine Warnung „Array to string“)
+        $aud = \is_array($c['aud'] ?? null) ? array_values(array_filter($c['aud'], 'is_string')) : (\is_string($c['aud'] ?? null) ? [$c['aud']] : []);
         if (!\in_array($p['client_id'], $aud, true)) {
             throw $fail('aud');
         }
-        if ((\count($aud) > 1 || isset($c['azp'])) && (string) ($c['azp'] ?? '') !== $p['client_id']) {
+        if ((\count($aud) > 1 || isset($c['azp'])) && ($c['azp'] ?? null) !== $p['client_id']) {
             throw $fail('azp');
         }
         if (!is_numeric($c['exp'] ?? null) || (int) $c['exp'] < $now - self::LEEWAY) {
@@ -394,7 +410,7 @@ final class Client
      */
     public static function strongAmr(array $claims): bool
     {
-        $amr = array_map('strval', (array) ($claims['amr'] ?? []));
+        $amr = array_filter((array) ($claims['amr'] ?? []), 'is_string');
 
         return (bool) array_intersect($amr, ['mfa', 'otp', 'hwk', 'swk', 'sc', 'fpt', 'face', 'iris', 'retina', 'vbm']);
     }
@@ -408,8 +424,9 @@ final class Client
     public static function roles(array $claims): array
     {
         $r = $claims['roles'] ?? [];
-        $list = \is_array($r) ? $r : preg_split('~[\s,]+~', (string) $r);
+        // nur Texte (verschachtelte Werte zählen nicht und lösen keine Warnung aus)
+        $list = \is_array($r) ? array_filter($r, 'is_string') : (\is_string($r) ? preg_split('~[\s,]+~', $r) : []);
 
-        return array_values(array_filter(array_map(static fn (mixed $v): string => strtolower(trim((string) $v)), $list ?: []), static fn (string $v): bool => '' !== $v));
+        return array_values(array_filter(array_map(static fn (string $v): string => strtolower(trim($v)), $list ?: []), static fn (string $v): bool => '' !== $v));
     }
 }
