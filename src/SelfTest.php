@@ -254,8 +254,11 @@ final class SelfTest
         try {
             $html = '<form id="rex-form-login" action="index.php"><section class="rex-section"><footer>x</footer></section></form>';
             $out = HubAddon::injectButton($html);
-            $this->check('Anmeldeseite: Knopf im Formular', str_contains($out, 'klxm-hub-login-button') && strpos($out, 'klxm-hub-login') < strpos($out, '</section>'));
+            $this->check('Anmeldeseite: Knopf im Formular', str_contains($out, 'klxm-hub-login-link') && strpos($out, 'klxm-hub-login') < strpos($out, '</section>'));
             $this->check('Anmeldeseite: Knopf führt zum Einstieg', str_contains($out, 'rex-api-call=klxm_hub&amp;step=start'));
+            $clean = Logo::clean('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8" onload="x()"><script>x()</script><style>*{}</style><circle cx="4" cy="4" r="3" fill="url(#a)"/><path d="M0 0h8" stroke="currentColor"/><image href="https://evil.example/x.png"/></svg>') ?? '';
+            $this->check('Logo: bereinigt (kein Skript, Stil, Ereignis, Verweis)', '' !== $clean && !preg_match('~script|style|onload|image|url\\(~i', $clean) && str_contains($clean, '<path') && str_contains($clean, 'aria-hidden="true"'));
+            $this->check('Logo: DOCTYPE/ENTITY abgewiesen', null === Logo::clean('<!DOCTYPE svg [<!ENTITY x "y">]><svg xmlns="http://www.w3.org/2000/svg"/>'));
             $this->check('Anmeldeseite: ohne Formular unverändert', '<p>x</p>' === HubAddon::injectButton('<p>x</p>'));
             $this->check('Login: E-Mail bzw. hub-…', 'mia@example.org' === Accounts::login('i', 's', 'mia@example.org') && str_starts_with(Accounts::login('i', 's', str_repeat('a', 60) . '@example.org'), 'hub-'));
         } finally {

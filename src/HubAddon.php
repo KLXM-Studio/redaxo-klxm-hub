@@ -131,10 +131,11 @@ final class HubAddon extends Addon
             return $html;
         }
         $name = Settings::oidc()['name'];
+        // dezent unter dem Formular: Trennlinie, kleiner Link mit Logo des Anbieters (Passkey/Passwort bleiben vorn)
+        $logo = Logo::svg() ?? '<i class="rex-icon fa-solid fa-right-to-bracket" aria-hidden="true"></i>';
         $button = '<div class="klxm-hub-login">'
-            . '<p class="klxm-hub-login-or"><span>' . escape(self::t('login_or')) . '</span></p>'
-            . '<a class="rex-button klxm-hub-login-button" data-width="full" href="' . escape(Client::startUri()) . '">'
-            . '<i class="rex-icon fa-solid fa-right-to-bracket" aria-hidden="true"></i> ' . escape(self::t('login_button', $name)) . '</a>'
+            . '<a class="klxm-hub-login-link" href="' . escape(Client::startUri()) . '">' . $logo
+            . '<span>' . escape(self::t('login_button', $name)) . '</span></a>'
             . '<p class="klxm-hub-login-note">' . escape(self::t('login_note')) . '</p>'
             . '</div>';
 

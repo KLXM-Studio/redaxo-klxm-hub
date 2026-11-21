@@ -148,6 +148,7 @@ final class SettingsPage
         }
         try {
             Client::discovery($s['issuer'], true);
+            \Klxm\Hub\Logo::refresh($s['issuer']);   // Logo des Anbieters (logo_uri) für den Anmelde-Link, optional
         } catch (OidcException $e) {
             Settings::saveOidc(['enabled' => false] + $in);
             Log::write('warning', 'settings-oidc', ['by' => $user, 'discovery' => $e->reason]);

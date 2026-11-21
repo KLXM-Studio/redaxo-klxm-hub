@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 (2026-11-21)
+
+- Anmeldeseite: Agentur-Login dezent unter dem Formular (Passkey und Passwort bleiben vorn), mit Logo des Anbieters aus der Discovery (`logo_uri`, beim Speichern geladen, streng bereinigt, lokal abgelegt – nie ein Abruf beim Anzeigen); Befehl `klxm_hub:logo`.
+
 ## 0.1.0 – 2026-11-21
 
 Erste Fassung für REDAXO 6.

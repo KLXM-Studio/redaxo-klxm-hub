@@ -1,35 +1,42 @@
 /* Agentur Hub – nur eigene Klassen (klxm-hub-…), Farben aus den Variablen des Backends (hell/dunkel). */
 
-/* Anmeldeseite: Knopf unter dem Formular */
+/* Anmeldeseite: dezenter Agentur-Link unter dem Formular (Passkey und Passwort bleiben vorn) */
 .klxm-hub-login {
-    margin-top: 1em;
+    margin-top: 1.25em;
+    padding-top: 1em;
+    border-top: 1px solid var(--rex-color-border);
+    text-align: center;
 }
 
-.klxm-hub-login-or {
-    display: flex;
+.klxm-hub-login-link {
+    display: inline-flex;
     align-items: center;
-    gap: 0.75em;
-    margin: 0 0 0.75em;
+    gap: 0.5em;
+    min-height: 2.75rem;
+    padding: 0.25em 0.75em;
+    border-radius: 0.5em;
     color: var(--rex-color-text-muted);
     font-size: var(--rex-font-size-small, 0.875em);
+    text-decoration: none;
 }
 
-.klxm-hub-login-or::before,
-.klxm-hub-login-or::after {
-    content: "";
-    flex: 1;
-    border-top: 1px solid var(--rex-color-border);
+.klxm-hub-login-link:hover,
+.klxm-hub-login-link:focus-visible {
+    color: var(--rex-color-text);
+    background: var(--rex-color-background-muted, rgb(0 0 0 / 0.04));
+    text-decoration: underline;
 }
 
-.klxm-hub-login-button.rex-button {
-    justify-content: center;
+.klxm-hub-login-logo {
+    width: 1.35em;
+    height: 1.35em;
+    flex: none;
 }
 
 .klxm-hub-login-note {
-    margin: 0.5em 0 0;
+    margin: 0.25em 0 0;
     color: var(--rex-color-text-muted);
-    font-size: var(--rex-font-size-small, 0.875em);
-    text-align: center;
+    font-size: 0.8em;
 }
 
 /* Einstellungen */
