@@ -15,16 +15,17 @@
     min-height: 2.75rem;
     padding: 0.25em 0.75em;
     border-radius: 0.5em;
-    color: var(--rex-color-text-muted);
+    color: inherit;   /* Textfarbe des Login-Kastens – gedämpfte Farbe war auf dunklem Grund zu schwach */
     font-size: var(--rex-font-size-small, 0.875em);
-    text-decoration: none;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
 }
 
 .klxm-hub-login-link:hover,
 .klxm-hub-login-link:focus-visible {
-    color: var(--rex-color-text);
-    background: var(--rex-color-background-muted, rgb(0 0 0 / 0.04));
-    text-decoration: underline;
+    background: color-mix(in srgb, currentColor 10%, transparent);
+    text-decoration-color: currentColor;
 }
 
 .klxm-hub-login-logo {
@@ -35,7 +36,8 @@
 
 .klxm-hub-login-note {
     margin: 0.25em 0 0;
-    color: var(--rex-color-text-muted);
+    color: inherit;
+    opacity: 0.85;   /* bleibt über 4,5:1 auf hellem wie dunklem Login-Kasten */
     font-size: 0.8em;
 }
 
