@@ -19,7 +19,7 @@ final class Settings
 {
     public const array OIDC_DEFAULTS = [
         'enabled' => false,
-        'name' => 'KLXM Hub',
+        'name' => 'Agentur Hub',
         'issuer' => '',
         'client_id' => '',
         'client_secret_enc' => '',
@@ -54,7 +54,7 @@ final class Settings
 
         return [
             'enabled' => (bool) $p['enabled'],
-            'name' => trim((string) $p['name']) ?: 'KLXM Hub',
+            'name' => trim((string) $p['name']) ?: 'Agentur Hub',
             'issuer' => rtrim(trim((string) $p['issuer']), '/'),
             'client_id' => trim((string) $p['client_id']),
             'client_secret' => $secret,

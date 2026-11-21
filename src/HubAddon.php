@@ -23,8 +23,8 @@ use Redaxo\Core\View\Asset;
 use function Redaxo\Core\View\escape;
 
 /**
- * KLXM Hub für REDAXO 6: Anmeldung im Backend über den Hub (OpenID Connect, {@see Api\LoginApi}) und signierte
- * Status-Abfrage für die Überwachung ({@see Api\StatusApi}). Beides ist aus, bis es unter AddOns → KLXM Hub
+ * Agentur Hub für REDAXO 6: Anmeldung im Backend über den Hub (OpenID Connect, {@see Api\LoginApi}) und signierte
+ * Status-Abfrage für die Überwachung ({@see Api\StatusApi}). Beides ist aus, bis es unter AddOns → Agentur Hub
  * eingeschaltet wird.
  */
 final class HubAddon extends Addon
@@ -70,11 +70,11 @@ final class HubAddon extends Addon
         return new OwnedSchema(tables: [Accounts::TABLE, RateLimit::TABLE]);
     }
 
-    /** Backend: AddOns → KLXM Hub (Einstellungen, Agentur-Konten) – nur Admins */
+    /** Backend: AddOns → Agentur Hub (Einstellungen, Agentur-Konten) – nur Admins */
     #[Override]
     public function getPages(): iterable
     {
-        $main = new MainPage('addons', self::NAME, 'KLXM Hub');
+        $main = new MainPage('addons', self::NAME, 'Agentur Hub');
         $main->setIcon('rex-icon fa-solid fa-right-to-bracket');
         $main->setRequiredPermissions('admin');
         $main->addSubpage(new Page('settings', self::t('page_settings')));
@@ -99,7 +99,7 @@ final class HubAddon extends Addon
             Asset::addCssFile($this->getAssetsUrl('klxm_hub.css'));
         }
 
-        // Anmeldeseite: Knopf „Mit KLXM Hub anmelden“ (nur wenn eingeschaltet und vollständig eingerichtet)
+        // Anmeldeseite: Knopf „Mit Agentur Hub anmelden“ (nur wenn eingeschaltet und vollständig eingerichtet)
         if (!Core::getUser() && Settings::oidcReady()) {
             Asset::addCssFile($this->getAssetsUrl('klxm_hub.css'));
             Extension::register('OUTPUT_FILTER', static function (ExtensionPoint $ep): string {
@@ -114,7 +114,7 @@ final class HubAddon extends Addon
     }
 
     /**
-     * Knopf in die Anmeldeseite einfügen – am Ende des Abschnitts im Formular #rex-form-login. Der Core hat dort (noch)
+     * Knopf in die Anmeldeseite einfügen – im Fuß des Abschnitts im Formular #rex-form-login. Der Core hat dort (noch)
      * keinen Erweiterungspunkt; fehlt das Formular, bleibt die Seite unverändert.
      */
     public static function injectButton(string $html): string
@@ -123,7 +123,10 @@ final class HubAddon extends Addon
         if (false === $form) {
             return $html;
         }
-        $end = strpos($html, '</section>', $form);
+        // im Fuß des Abschnitts unter dem Login-Knopf (gleiche Abstände), sonst am Ende des Abschnitts
+        $section = strpos($html, '</section>', $form);
+        $footer = strpos($html, '</footer>', $form);
+        $end = false !== $footer && (false === $section || $footer < $section) ? $footer : $section;
         if (false === $end) {
             return $html;
         }

@@ -27,8 +27,9 @@ use Redaxo\Core\Mode;
  * Prüfungen (Fehler = rot, Hinweis = gelb):
  *   Fehler   Datenbank nicht erreichbar · Ordner (media, assets, cache, data) nicht beschreibbar
  *   Hinweis  ausstehende Migrationen · Modus „dev“ auf einer öffentlichen Website · Verwaltung ohne HTTPS ·
- *            AddOns als Entwicklungsfassung (dev-…) im Modus live · Fehler im Systemprotokoll (24 Stunden) ·
+ *            AddOns als Entwicklungsfassung (dev-…) im Modus live ·
  *            OPcache aus · Anmeldung über den Hub an, aber kein lokaler Admin mit Passwort (Notfall-Zugang)
+ * Fehlerprotokoll als eigenes Feld `log` (window_hours, errors, warnings) – der Hub bewertet es selbst.
  * Eigene Prüfungen und Sicherungen anderer Werkzeuge über {@see HubStatus}.
  */
 final class Status
@@ -88,6 +89,8 @@ final class Status
             'backup' => ['last_at' => self::iso(self::lastBackup()), 'offsite_at' => null],
             'integrity' => ['status' => 'unknown', 'checked_at' => null],
             'ssl' => ['expires_at' => null],   // ermittelt der Hub selbst aus der TLS-Verbindung
+            // Fehlerprotokoll (nur Zahlen): schwere Fehler (Exceptions, Fatal/Error) und PHP-Warnungen der letzten 24 Stunden
+            'log' => ['window_hours' => 24] + self::logCounts(86400),
         ];
         if (Addon::exists('fluid')) {
             $status['theme'] = ['name' => 'fluid', 'version' => (string) Addon::get('fluid')?->getVersion()];
@@ -161,10 +164,6 @@ final class Status
         if (!(\function_exists('opcache_get_status') && \ini_get('opcache.enable')) && $live) {
             $out[] = ['warning', HubAddon::t('check_opcache')];
         }
-        $errors = self::logErrors(86400);
-        if ($errors > 0) {
-            $out[] = ['warning', HubAddon::t('check_log', $errors)];
-        }
         if (Settings::oidc()['enabled'] && 0 === self::localAdmins()) {
             $out[] = ['warning', HubAddon::t('check_no_local_admin')];
         }
@@ -187,14 +186,19 @@ final class Status
         return !filter_var($host, FILTER_VALIDATE_IP) || false !== filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
     }
 
-    /** Einträge im Systemprotokoll der letzten $window Sekunden, die keine Hinweise sind (höchstens 2000 gelesen) */
-    public static function logErrors(int $window): int
+    /**
+     * Systemprotokoll der letzten $window Sekunden zählen (höchstens 2000 Einträge gelesen): errors = Exceptions und
+     * Fehler, warnings = PHP-Warnungen. Hinweise (Info, Notice, Deprecated, Debug) und Zeilen dieses AddOns zählen nicht.
+     *
+     * @return array{errors: int, warnings: int}
+     */
+    public static function logCounts(int $window): array
     {
+        $out = ['errors' => 0, 'warnings' => 0];
         $path = Logger::getPath();
         if (!is_file($path)) {
-            return 0;
+            return $out;
         }
-        $n = 0;
         $read = 0;
         try {
             foreach (LogFile::factory($path) as $entry) {
@@ -202,16 +206,16 @@ final class Status
                     break;
                 }
                 $level = strtolower((string) ($entry->getData()[0] ?? ''));
-                $msg = (string) ($entry->getData()[1] ?? '');
-                if (\in_array($level, ['info', 'notice', 'debug', 'deprecated', 'warning'], true) || str_starts_with($msg, 'klxm_hub:')) {
+                // HttpException = Antwort an den Client (4xx), im Modus dev mitprotokolliert – kein Serverfehler
+                if (str_starts_with((string) ($entry->getData()[1] ?? ''), 'klxm_hub:') || str_ends_with($level, 'httpexception') || \in_array($level, ['info', 'notice', 'debug', 'deprecated', 'user deprecated', 'user notice'], true)) {
                     continue;
                 }
-                ++$n;
+                \in_array($level, ['warning', 'user warning', 'core warning', 'compile warning'], true) ? ++$out['warnings'] : ++$out['errors'];
             }
         } catch (\Throwable) {
         }
 
-        return $n;
+        return $out;
     }
 
     /** Aktive Admins mit Passwort (Notfall-Zugang ohne Hub) */

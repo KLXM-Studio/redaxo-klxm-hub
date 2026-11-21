@@ -47,7 +47,7 @@ klxm_hub_monitor_enabled = Status-Abfrage
 klxm_hub_monitor_enabled_label = Signierte Status-Abfrage erlauben
 klxm_hub_monitor_enabled_note = Der Hub fragt Versionen, AddOns, Prüfungen und die letzte Sicherung ab – nur mit gültiger Signatur, keine Inhalte und keine Personendaten. Ausgeschaltet antwortet die Adresse mit „nicht gefunden“.
 klxm_hub_monitor_keys = Schlüssel des Hubs
-klxm_hub_monitor_keys_note = Je Zeile ein öffentlicher Schlüssel „ed25519:…“, optional mit Bezeichnung davor (höchstens 10). Zu finden im Hub unter Einstellungen → Agentur-Hub.
+klxm_hub_monitor_keys_note = Je Zeile ein öffentlicher Schlüssel „ed25519:…“, optional mit Bezeichnung davor (höchstens 10). Zu finden im Hub unter Einstellungen → Agentur Hub.
 klxm_hub_monitor_backup = Ordner mit Sicherungen
 klxm_hub_monitor_backup_note = Optional: absolut oder relativ zum Projektordner. Gemeldet wird nur die Zeit der neuesten Datei (*.sql, *.sql.gz, *.tar.gz, *.tgz, *.zip), nie der Pfad.
 klxm_hub_monitor_key_invalid = Ungültiger Schlüssel: „{0}“ – erwartet wird „ed25519:…“ (optional mit Bezeichnung davor).
@@ -107,5 +107,4 @@ klxm_hub_check_dev_mode = Entwicklungsmodus (REX_MODE=dev) auf einer öffentlich
 klxm_hub_check_https = Aufruf ohne HTTPS
 klxm_hub_check_dev_addons = AddOns als Entwicklungsfassung: {0}
 klxm_hub_check_opcache = OPcache ist aus
-klxm_hub_check_log = {0} Fehler im Systemprotokoll (24 Stunden)
 klxm_hub_check_no_local_admin = Kein lokaler Admin mit Passwort (Notfall-Zugang)

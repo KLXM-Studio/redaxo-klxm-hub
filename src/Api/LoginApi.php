@@ -15,7 +15,6 @@ use Redaxo\Core\ApiFunction\Result;
 use Redaxo\Core\Core;
 use Redaxo\Core\Database\Sql;
 use Redaxo\Core\Filesystem\Url;
-use Redaxo\Core\Http\Exception\NotFoundHttpException;
 use Redaxo\Core\Http\Request;
 use Redaxo\Core\Http\Response;
 use Redaxo\Core\Security\BackendLogin;
@@ -47,12 +46,9 @@ final class LoginApi extends ApiFunction
     public function execute(): Result
     {
         $s = Settings::oidc();
-        if (!Core::isBackend() || !Settings::oidcReady($s)) {
-            throw new NotFoundHttpException('Not found');
-        }
         $step = Request::get('step', 'string', '');
-        if (!\in_array($step, ['start', 'callback'], true)) {
-            throw new NotFoundHttpException('Not found');
+        if (!Core::isBackend() || !Settings::oidcReady($s) || !\in_array($step, ['start', 'callback'], true)) {
+            self::notFound();
         }
         if (RateLimit::tooMany(RateLimit::ip('login'), self::MAX_REQUESTS, self::WINDOW) || RateLimit::tooMany(RateLimit::ip('login-fail'), self::MAX_FAILURES, self::WINDOW)) {
             Log::write('warning', 'login-denied', ['reason' => 'rate_limit']);
@@ -139,6 +135,16 @@ final class LoginApi extends ApiFunction
         UserSession::getInstance()->storeCurrentSession($login);
         UserSession::clearExpiredSessions();
         Sql::factory()->setQuery('UPDATE rex_user SET login_tries = 0, lasttrydate = ?, lastlogin = ? WHERE id = ? LIMIT 1', [Sql::datetime(), Sql::datetime(), $userId]);
+    }
+
+    /** Aus bzw. unbekannter Schritt: schlicht 404 (ohne Ausnahme – sie landete im Modus dev im Systemprotokoll) */
+    private static function notFound(): never
+    {
+        Response::cleanOutputBuffers();
+        Response::setStatus(Response::HTTP_NOT_FOUND);
+        Response::sendCacheControl('no-store');
+        Response::sendContent('Not found', 'text/plain; charset=utf-8');
+        exit;
     }
 
     /** Meldung auf der Anmeldeseite des Backends */

@@ -249,7 +249,7 @@ final class SelfTest
         } finally {
             Secret::$testKey = null;
         }
-        Settings::$override = ['oidc' => ['enabled' => true, 'name' => 'KLXM Hub', 'issuer' => 'https://hub.example.org/hub', 'client_id' => 'c', 'client_secret' => 's']];
+        Settings::$override = ['oidc' => ['enabled' => true, 'name' => 'Agentur Hub', 'issuer' => 'https://hub.example.org/hub', 'client_id' => 'c', 'client_secret' => 's']];
         Client::$baseOverride = 'https://www.example.org/';
         try {
             $html = '<form id="rex-form-login" action="index.php"><section class="rex-section"><footer>x</footer></section></form>';

@@ -1,6 +1,6 @@
 {
     "name": "klxm/klxm_hub",
-    "description": "REDAXO 6 addon: take part in the KLXM Hub – backend sign-in via OpenID Connect (SSO, second factor required) and a signed, read-only status endpoint for monitoring (protocol status-v1). Everything is off by default.",
+    "description": "REDAXO 6 addon: take part in the Agentur Hub (KLXM Studio) – backend sign-in via OpenID Connect (SSO, second factor required) and a signed, read-only status endpoint for monitoring (protocol status-v1). Everything is off by default.",
     "type": "redaxo-addon",
     "license": "MIT",
     "keywords": [
@@ -23,7 +23,11 @@
             "homepage": "https://klxm.de"
         }
     ],
-    "homepage": "https://klxm.de",
+    "homepage": "https://github.com/KLXM-Studio/redaxo-klxm-hub",
+    "support": {
+        "issues": "https://github.com/KLXM-Studio/redaxo-klxm-hub/issues",
+        "source": "https://github.com/KLXM-Studio/redaxo-klxm-hub"
+    },
     "require": {
         "php": "^8.5",
         "ext-json": "*",

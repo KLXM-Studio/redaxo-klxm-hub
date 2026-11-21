@@ -18,7 +18,7 @@ use Redaxo\Core\View\Message;
 use function Redaxo\Core\View\escape;
 
 /**
- * Backend → AddOns → KLXM Hub → Agentur-Konten: Liste der über den Hub angelegten Benutzer, lokal sperren/entsperren.
+ * Backend → AddOns → Agentur Hub → Agentur-Konten: Liste der über den Hub angelegten Benutzer, lokal sperren/entsperren.
  * Löschen und alle weiteren Angaben über die Benutzerverwaltung des Cores.
  *
  * @internal

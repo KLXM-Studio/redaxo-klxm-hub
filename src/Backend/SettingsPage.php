@@ -20,7 +20,7 @@ use Redaxo\Core\View\Message;
 use function Redaxo\Core\View\escape;
 
 /**
- * Backend → AddOns → KLXM Hub → Einstellungen: Anmeldung über den Hub und Überwachung (beides Standard aus).
+ * Backend → AddOns → Agentur Hub → Einstellungen: Anmeldung über den Hub und Überwachung (beides Standard aus).
  *
  * @internal
  */
@@ -86,7 +86,7 @@ final class SettingsPage
         }
         $body = '<form method="post">' . $csrf . '<input type="hidden" name="klxm_hub_do" value="monitor">'
             . $field($t('monitor_enabled'), $check('monitor[enabled]', $m['enabled'], $t('monitor_enabled_label')), $t('monitor_enabled_note'))
-            . $field($t('monitor_keys'), '<textarea class="rex-input klxm-hub-keys" id="kh-keys" name="monitor[keys]" rows="3" spellcheck="false" placeholder="KLXM Hub ed25519:…">' . escape($keys) . '</textarea>', $t('monitor_keys_note'), 'kh-keys')
+            . $field($t('monitor_keys'), '<textarea class="rex-input klxm-hub-keys" id="kh-keys" name="monitor[keys]" rows="3" spellcheck="false" placeholder="Agentur Hub ed25519:…">' . escape($keys) . '</textarea>', $t('monitor_keys_note'), 'kh-keys')
             . $field($t('monitor_backup'), $input('kh-bk', 'monitor[backup_dir]', $m['backup_dir'], 'text', ' spellcheck="false" placeholder="../backups"'), $t('monitor_backup_note'), 'kh-bk')
             . '<div class="rex-button-toolbar"><button type="submit" class="rex-button" data-variant="primary">' . escape($t('save')) . '</button></div></form>';
         $out .= new Section(title: $t('section_monitor'), body: Html::raw($body))->render();

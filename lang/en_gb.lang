@@ -47,7 +47,7 @@ klxm_hub_monitor_enabled = Status request
 klxm_hub_monitor_enabled_label = Allow signed status requests
 klxm_hub_monitor_enabled_note = The hub reads versions, addons, checks and the latest backup – only with a valid signature, no content and no personal data. When switched off the address answers “not found”.
 klxm_hub_monitor_keys = Keys of the hub
-klxm_hub_monitor_keys_note = One public key “ed25519:…” per line, optionally preceded by a label (at most 10). Found in the hub under Settings → Agency hub.
+klxm_hub_monitor_keys_note = One public key “ed25519:…” per line, optionally preceded by a label (at most 10). Found in the hub under Settings → Agentur Hub.
 klxm_hub_monitor_backup = Backup folder
 klxm_hub_monitor_backup_note = Optional: absolute or relative to the project folder. Only the time of the newest file (*.sql, *.sql.gz, *.tar.gz, *.tgz, *.zip) is reported, never the path.
 klxm_hub_monitor_key_invalid = Invalid key: “{0}” – expected “ed25519:…” (optionally preceded by a label).
@@ -107,5 +107,4 @@ klxm_hub_check_dev_mode = Development mode (REX_MODE=dev) on a public address
 klxm_hub_check_https = Request without HTTPS
 klxm_hub_check_dev_addons = Addons as development versions: {0}
 klxm_hub_check_opcache = OPcache is off
-klxm_hub_check_log = {0} errors in the system log (24 hours)
 klxm_hub_check_no_local_admin = No local admin with password (emergency access)
