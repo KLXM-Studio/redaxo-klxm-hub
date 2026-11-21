@@ -16,7 +16,7 @@ klxm_hub_oidc_enabled_note = Zeigt auf der Anmeldeseite des Backends einen Knopf
 klxm_hub_oidc_name = Name des Anbieters
 klxm_hub_oidc_name_note = Beschriftung des Knopfs und Kennzeichnung der Konten.
 klxm_hub_oidc_issuer = Issuer
-klxm_hub_oidc_issuer_note = Adresse des Hubs, z. B. https://hub.klxm.de/hub – genau so, wie der Hub sie nennt. Die Einstellungen holt sich das AddOn von {Issuer}/.well-known/openid-configuration.
+klxm_hub_oidc_issuer_note = Adresse des Hubs, z. B. https://hub.example.org/hub – genau so, wie der Hub sie nennt. Die Einstellungen holt sich das AddOn von {Issuer}/.well-known/openid-configuration.
 klxm_hub_oidc_client_id = Client-ID
 klxm_hub_oidc_client_secret = Client-Geheimnis
 klxm_hub_secret_saved = Gespeichert (verschlüsselt). Leer lassen, um es zu behalten.
@@ -37,10 +37,12 @@ klxm_hub_oidc_jit_note = Angelegt werden gekennzeichnete Agentur-Konten ohne lok
 
 klxm_hub_section_addresses = Adressen für den Hub
 klxm_hub_addresses_note = Diese Adressen beim Registrieren der Instanz im Hub eintragen (unter „Adressen“, exakt so).
+klxm_hub_addresses_instance_note = „Adressen ermitteln“ im Hub liest /.well-known/klxm-studio (Selbstauskunft klxm-instance-v1, erreichbar, wenn das Frontend die Adresse an index.php gibt) – sonst liefert die Adresse „Selbstauskunft“ denselben Inhalt.
 klxm_hub_addr_redirect = Redirect-URI
 klxm_hub_addr_start = Einstieg
 klxm_hub_addr_status = Status-Adresse
 klxm_hub_addr_logout = Nach dem Abmelden
+klxm_hub_addr_instance = Selbstauskunft
 klxm_hub_warn_no_base_url = REX_BASE_URL ist nicht gesetzt – die Adressen hängen am Host der jeweiligen Anfrage. Bitte REX_BASE_URL (z. B. in .env.local) auf die Adresse der Website setzen, damit die Redirect-URI immer feststeht.
 
 klxm_hub_section_monitor = Überwachung (signierte Status-Abfrage)

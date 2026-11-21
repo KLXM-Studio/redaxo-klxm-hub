@@ -60,6 +60,24 @@ final class Client
         return self::backendUrl(['rex-api-call' => 'klxm_hub', 'step' => 'start']);
     }
 
+    /** Adresse nach dem Abmelden (post_logout_redirect_uri): Anmeldeseite des Backends */
+    public static function logoutUri(): string
+    {
+        return preg_replace('~\?.*$~', '', self::startUri()) ?? self::startUri();
+    }
+
+    /** Adresse der Website (REX_BASE_URL bzw. Host der Anfrage), mit / am Ende */
+    public static function siteUrl(): string
+    {
+        return rtrim(self::$baseOverride ?? Url::absoluteBase(), '/') . '/';
+    }
+
+    /** Status-Adresse (Frontend, status-v1) */
+    public static function statusUri(): string
+    {
+        return self::siteUrl() . 'index.php?rex-api-call=klxm_hub_status';
+    }
+
     /**
      * Einstieg als relative Adresse (Link auf der Anmeldeseite) – hängt nie am Host der Anfrage, auch wenn REX_BASE_URL
      * fehlt (keine Host-Header-Einschleusung in die Seite).

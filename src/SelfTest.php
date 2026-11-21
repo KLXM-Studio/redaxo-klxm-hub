@@ -30,6 +30,7 @@ final class SelfTest
         $t->oidc();
         $t->misc();
         $t->hardening();
+        $t->instance();
 
         return ['ok' => $t->ok, 'fails' => $t->fails];
     }
@@ -352,5 +353,29 @@ final class SelfTest
         Client::forgetPending();
         $this->check('Anmeldung: offene Anmeldungen verworfen', [] === Client::$pendingMemory);
         Client::$pendingMemory = null;
+    }
+
+    /** Selbstauskunft klxm-instance-v1 (0.2.0) */
+    private function instance(): void
+    {
+        Settings::$override = ['oidc' => [], 'monitor' => []];
+        Client::$baseOverride = 'https://www.example.org/';
+        try {
+            $this->check('Selbstauskunft: nichts eingerichtet → 404', null === InstanceInfo::build());
+            Settings::$override = ['oidc' => ['issuer' => 'https://hub.example.org/hub', 'client_id' => 'c'], 'monitor' => []];
+            $i = InstanceInfo::build() ?? [];
+            $this->check('Selbstauskunft: klxm-instance-v1, system redaxo6, Redirect-URI, ohne Status', 'klxm-instance-v1' === ($i['spec'] ?? '') && 'redaxo6' === ($i['system'] ?? '')
+                && 'https://www.example.org/redaxo/index.php?rex-api-call=klxm_hub&step=callback' === ($i['login']['redirect_uri'] ?? '')
+                && 'https://www.example.org/redaxo/index.php' === ($i['login']['post_logout_redirect_uri'] ?? '') && null === ($i['monitoring']['status_url'] ?? null));
+            $kp = sodium_crypto_sign_keypair();
+            Settings::$override = ['oidc' => [], 'monitor' => ['enabled' => true, 'keys' => [Signature::formatKey(sodium_crypto_sign_publickey($kp))]]];
+            $i = InstanceInfo::build() ?? [];
+            $this->check('Selbstauskunft: nur Überwachung → Status-Adresse', 'https://www.example.org/index.php?rex-api-call=klxm_hub_status' === ($i['monitoring']['status_url'] ?? '')
+                && false === ($i['login']['configured'] ?? null));
+            $this->check('Selbstauskunft: keine Schlüssel, keine Geheimnisse', !preg_match('~ed25519|secret~', (string) json_encode($i)));
+        } finally {
+            Settings::$override = null;
+            Client::$baseOverride = null;
+        }
     }
 }

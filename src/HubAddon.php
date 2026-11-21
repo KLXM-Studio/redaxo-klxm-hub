@@ -15,7 +15,11 @@ use Redaxo\Core\Database\Index;
 use Redaxo\Core\Database\Table;
 use Redaxo\Core\ExtensionPoint\Extension;
 use Redaxo\Core\ExtensionPoint\ExtensionPoint;
+use Redaxo\Core\Filesystem\Url;
 use Redaxo\Core\Http\Request;
+use Redaxo\Core\Http\Response;
+use Redaxo\Core\Security\BackendLogin;
+use Redaxo\Core\Security\UserSession;
 use Redaxo\Core\Translation\I18n;
 use Redaxo\Core\Util\Type;
 use Redaxo\Core\View\Asset;
@@ -92,8 +96,15 @@ final class HubAddon extends Addon
         });
 
         if (!Core::isBackend()) {
+            // Selbstauskunft unter /.well-known/klxm-studio (sofern die Anfrage index.php erreicht)
+            if (Core::hasRequest()) {
+                InstanceInfo::serveWellKnown();
+            }
+
             return;
         }
+        self::denyAgencyPasskey();
+
         $page = Request::get('page', 'string', '');
         if (str_starts_with($page, self::NAME)) {
             Asset::addCssFile($this->getAssetsUrl('klxm_hub.css'));
@@ -111,6 +122,24 @@ final class HubAddon extends Addon
                 return self::injectButton($html);
             });
         }
+    }
+
+    /**
+     * Agentur-Konten (ohne lokales Passwort) melden sich nur über den Hub an: Eine Sitzung, die per Passkey entstanden
+     * ist, wird sofort beendet – sonst wirkte ein Entzug im Hub nicht, solange das Konto lokal einen Passkey hat.
+     * Bekommt ein Agentur-Konto lokal ein Passwort, ist es ein lokales Konto.
+     */
+    private static function denyAgencyPasskey(): void
+    {
+        $login = BackendLogin::getCurrent();
+        $user = Core::getUser();
+        if (!$user || !$login || null === $login->getPasskey() || '' !== (string) $user->password || !Accounts::isAgency($user->id)) {
+            return;
+        }
+        Log::write('warning', 'login-denied', ['reason' => 'passkey', 'user' => $user->id]);
+        UserSession::getInstance()->clearCurrentSession();
+        BackendLogin::deleteSession();
+        Response::sendRedirect(Url::backendController(['rex_logged_out' => 1]));
     }
 
     /**

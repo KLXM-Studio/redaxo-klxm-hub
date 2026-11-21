@@ -10,7 +10,6 @@ use Klxm\Hub\Oidc\OidcException;
 use Klxm\Hub\Settings;
 use Redaxo\Core\Core;
 use Redaxo\Core\Database\Sql;
-use Redaxo\Core\Filesystem\Url;
 use Redaxo\Core\Http\Request;
 use Redaxo\Core\Security\CsrfToken;
 use Redaxo\Core\View\Component\Section;
@@ -69,8 +68,9 @@ final class SettingsPage
         $addr = [
             $t('addr_redirect') => Client::redirectUri(),
             $t('addr_start') => Client::startUri(),
-            $t('addr_status') => rtrim(Url::absoluteBase(), '/') . '/index.php?rex-api-call=klxm_hub_status',
-            $t('addr_logout') => preg_replace('~\?.*$~', '', Client::startUri()),
+            $t('addr_status') => Client::statusUri(),
+            $t('addr_logout') => Client::logoutUri(),
+            $t('addr_instance') => Client::siteUrl() . 'index.php?rex-api-call=klxm_hub_instance',
         ];
         $rows = '';
         foreach ($addr as $label => $url) {
@@ -78,7 +78,8 @@ final class SettingsPage
         }
         // ohne REX_BASE_URL hängen Redirect-URI und Einstieg am Host der Anfrage (Host-Header) – fest einstellen
         $baseWarn = null === Core::getProject()->baseUrl ? Message::warning(escape($t('warn_no_base_url'))) : '';
-        $out .= new Section(title: $t('section_addresses'), body: Html::raw('<p>' . escape($t('addresses_note')) . '</p>' . $baseWarn),
+        $out .= new Section(title: $t('section_addresses'), body: Html::raw('<p>' . escape($t('addresses_note')) . '</p>' . $baseWarn
+            . '<p class="klxm-hub-muted">' . escape($t('addresses_instance_note')) . '</p>'),
             content: Html::raw('<table class="rex-table klxm-hub-addresses"><tbody>' . $rows . '</tbody></table>'))->render();
 
         // ---------------------------------------------------------------- Überwachung

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0 (2026-11-21)
+
+- Selbstauskunft `klxm-instance-v1` unter `/.well-known/klxm-studio` (Rückfall ohne Umschreibregel:
+  `index.php?rex-api-call=klxm_hub_instance`), `"system": "redaxo6"`: Redirect-URI, Einstieg, Adresse nach dem Abmelden,
+  Status-Adresse – „Adressen ermitteln“ im Hub übernimmt sie. `404`, solange nichts eingerichtet ist; keine Versionen,
+  Schlüssel oder Personendaten. Die Einstellungen zeigen die Adresse unter „Adressen für den Hub“.
+- Agentur-Konten ohne Passwort melden sich nur über den Hub an: eine per Passkey entstandene Sitzung wird sofort beendet
+  (`login-denied reason=passkey`) – ein Entzug im Hub wirkt so auch, wenn das Konto lokal einen Passkey hat.
+- README: Abschnitt „Mit eigenem Agentur Hub“ (Voraussetzungen, Einrichtung im Hub, Einstellungen, Prüfen); Beispiele
+  mit `hub.example.org`.
+- Selbsttest um die Selbstauskunft erweitert.
+
 ## 0.1.3 (2026-11-21)
 
 Sicherheitsprüfung (Anmeldung, Status-Abfrage, Logo) – Härtungen, keine neuen Funktionen:

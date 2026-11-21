@@ -16,7 +16,7 @@ klxm_hub_oidc_enabled_note = Shows a button on the backend login page. Signing i
 klxm_hub_oidc_name = Provider name
 klxm_hub_oidc_name_note = Label of the button and marker of the accounts.
 klxm_hub_oidc_issuer = Issuer
-klxm_hub_oidc_issuer_note = Address of the hub, e.g. https://hub.klxm.de/hub – exactly as the hub states it. The addon reads the settings from {Issuer}/.well-known/openid-configuration.
+klxm_hub_oidc_issuer_note = Address of the hub, e.g. https://hub.example.org/hub – exactly as the hub states it. The addon reads the settings from {Issuer}/.well-known/openid-configuration.
 klxm_hub_oidc_client_id = Client ID
 klxm_hub_oidc_client_secret = Client secret
 klxm_hub_secret_saved = Saved (encrypted). Leave empty to keep it.
@@ -37,10 +37,12 @@ klxm_hub_oidc_jit_note = Creates marked agency accounts without a local password
 
 klxm_hub_section_addresses = Addresses for the hub
 klxm_hub_addresses_note = Enter these addresses when registering the instance in the hub (under “Addresses”, exactly like this).
+klxm_hub_addresses_instance_note = “Detect addresses” in the hub reads /.well-known/klxm-studio (self-description klxm-instance-v1, reachable when the frontend passes the address to index.php) – otherwise the “Self-description” address returns the same content.
 klxm_hub_addr_redirect = Redirect URI
 klxm_hub_addr_start = Initiate login
 klxm_hub_addr_status = Status address
 klxm_hub_addr_logout = After sign-out
+klxm_hub_addr_instance = Self-description
 klxm_hub_warn_no_base_url = REX_BASE_URL is not set – the addresses depend on the host of each request. Please set REX_BASE_URL (e.g. in .env.local) to the address of the website so the redirect URI is always fixed.
 
 klxm_hub_section_monitor = Monitoring (signed status request)

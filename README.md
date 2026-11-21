@@ -29,7 +29,7 @@ php bin/console migrate
    | After sign-out | `https://<host>/redaxo/index.php` |
 
    Client ID and client secret are shown **once**. Grant access per person with role `admin` or `redaktion`.
-2. **In REDAXO:** Addons → Agentur Hub → Settings: issuer (e.g. `https://hub.klxm.de/hub`), client ID, client secret,
+2. **In REDAXO:** Addons → Agentur Hub → Settings: issuer (e.g. `https://hub.example.org/hub`), client ID, client secret,
    role for `redaktion`, “Offer sign-in via the provider” → Save (the addon checks the discovery document, otherwise
    it stays off). “Addresses for the hub” shows the exact addresses this installation expects (based on `REX_BASE_URL`).
    **Set `REX_BASE_URL`** (e.g. in `.env.local`), otherwise the redirect URI depends on the request's Host header – the
@@ -38,13 +38,48 @@ php bin/console migrate
 3. **In the hub:** “Check now” – the traffic light appears.
 4. **Keep an emergency admin** with password (and passkey). The addon warns when there is none.
 
+## With your own Agentur Hub
+
+The addon is not tied to a particular hub: it works with any Agentur Hub (extension `agentur` on a KLXM Studio
+installation, [KLXM-Studio/studio-agentur-hub](https://github.com/KLXM-Studio/studio-agentur-hub)) and with any OpenID Connect provider or monitoring service that implements the open specifications –
+[OIDC profile](https://github.com/KLXM-Studio/studio/blob/main/docs/agentur-hub/oidc-profil.md) and
+[`status-v1`](https://github.com/KLXM-Studio/studio/blob/main/docs/agentur-hub/monitoring-status-v1.md).
+
+**Requirements:** REDAXO 6, PHP ≥ 8.5 with `sodium` and `openssl`, the website on **https**, `REX_BASE_URL` set. The provider must
+offer discovery, the authorization code flow with **PKCE S256**, `iss` in the response (RFC 9207), **RS256** ID tokens,
+`client_secret_basic` or `client_secret_post`, an **`amr`** claim proving a second factor and a **`roles`** claim with `admin` or
+`redaktion` (the addon requests `openid email profile roles`). The Agentur Hub provides all of this; for other providers configure
+the role claim and `amr` there. Monitoring needs the service's public key `ed25519:…`.
+
+**In the hub:** register the instance (system “REDAXO 6”, website address, backend path), make sure the addresses match the box
+“Addresses for the hub” in the addon **exactly**, note client ID and secret (shown once), grant people `admin` or `redaktion`,
+copy the monitoring key.
+
+**In the addon:** Addons → Agentur Hub → Settings: name, issuer (e.g. `https://hub.example.org/hub`), client ID and secret
+(or `KLXM_HUB_CLIENT_SECRET`), role for `redaktion`, account creation on first sign-in, enable sign-in (the addon checks the
+discovery document); monitoring keys and “Allow signed status requests”.
+
+**Check:** no warning in “Addresses for the hub”; the login page shows “Sign in with Agentur Hub”; “Open” in the hub signs in;
+“Check now” shows the traffic light (yellow for “integrity not checked” is expected on REDAXO and can be acknowledged in the
+hub); `php bin/console klxm_hub:selftest`; log lines `klxm_hub: …` in the REDAXO system log.
+
 ## Agency accounts
 
 Mapped by issuer + `sub` (table `rex_klxm_hub_identity`), never by e-mail. Created on first sign-in (optional) without
 a password and marked “Agency account”; role from claim `roles` (`admin` → admin, `redaktion` → configured role),
 synchronised on every sign-in. Existing users are never taken over. An e-mail address the hub reports as unverified
 (`email_verified` ≠ true) becomes neither login nor e-mail of the account. Lock accounts under Addons → Agentur Hub →
-Agency accounts (running sessions end immediately).
+Agency accounts (running sessions end immediately). Agency accounts without a password sign in via the hub only: a
+session created by passkey is ended at once (log `login-denied reason=passkey`), so revoking access in the hub works even
+if the account has a local passkey.
+
+## Self-description (`klxm-instance-v1`)
+
+`GET /.well-known/klxm-studio` returns the instance name (`REX_INSTANCE_NAME`), redirect URI, initiate-login URI,
+post-logout URI and status address (`"system": "redaxo6"`) so “Detect addresses” in the hub can take them over. `404` as
+long as neither sign-in (issuer or client ID) nor monitoring is set up. No versions, keys or personal data. It works when
+the frontend passes addresses without a file to `index.php` (rewrite rule); otherwise
+`GET /index.php?rex-api-call=klxm_hub_instance` returns the same content.
 
 ## Security
 

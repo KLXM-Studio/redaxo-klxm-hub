@@ -74,7 +74,7 @@ final class StatusApi extends ApiFunction
     }
 
     /** @param array<string, mixed> $data */
-    private static function send(array $data, string $status): never
+    public static function send(array $data, string $status): never
     {
         Response::cleanOutputBuffers();
         Response::setStatus($status);

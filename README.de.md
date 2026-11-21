@@ -34,7 +34,7 @@ einbinden (siehe unten „Einrichtung auf einem Server“).
 
    Client-ID und Client-Geheimnis erscheinen **einmal**. Freigaben je Person mit Rolle `admin` oder `redaktion`.
 2. **In REDAXO:** AddOns → Agentur Hub → Einstellungen
-   - Issuer (z. B. `https://hub.klxm.de/hub`), Client-ID, Client-Geheimnis, Rolle für `redaktion`, „Anmeldung über den
+   - Issuer (z. B. `https://hub.example.org/hub`), Client-ID, Client-Geheimnis, Rolle für `redaktion`, „Anmeldung über den
      Anbieter anbieten“ → Speichern. Das AddOn prüft dabei, ob der Hub erreichbar ist (Discovery), sonst bleibt es aus.
    - Der Kasten „Adressen für den Hub“ zeigt die Adressen, die diese Installation erwartet – sie müssen im Hub exakt
      so stehen (Grundlage ist `REX_BASE_URL` bzw. der Host der Anfrage). **`REX_BASE_URL` setzen** (z. B. in
@@ -44,6 +44,60 @@ einbinden (siehe unten „Einrichtung auf einem Server“).
 3. **Im Hub:** „Jetzt prüfen“ – die Ampel erscheint.
 4. **Notfall-Admin behalten:** mindestens einen lokalen Admin mit Passwort (und Passkey) behalten. Das AddOn warnt,
    wenn keiner da ist.
+
+## Mit eigenem Agentur Hub
+
+Das AddOn ist nicht an einen bestimmten Hub gebunden: Es funktioniert mit jedem Agentur Hub (Erweiterung `agentur` auf einer
+KLXM-Studio-Installation, [KLXM-Studio/studio-agentur-hub](https://github.com/KLXM-Studio/studio-agentur-hub)) und mit jedem OpenID-Connect-Anbieter bzw. Überwachungsdienst, der die offenen Spezifikationen
+erfüllt – [OIDC-Profil](https://github.com/KLXM-Studio/studio/blob/main/docs/agentur-hub/oidc-profil.md) und
+[`status-v1`](https://github.com/KLXM-Studio/studio/blob/main/docs/agentur-hub/monitoring-status-v1.md).
+
+### Voraussetzungen
+
+- REDAXO 6, PHP ≥ 8.5 mit `sodium` und `openssl`, die Website per **https** erreichbar, `REX_BASE_URL` gesetzt.
+- Ein Hub bzw. Anbieter mit
+  - Discovery unter `{issuer}/.well-known/openid-configuration`, Authorization Code Flow mit **PKCE S256**,
+    `iss` in der Antwort (RFC 9207), ID-Token **RS256**, Client-Authentifizierung `client_secret_basic` oder `client_secret_post`;
+  - Claim **`amr`** mit zweitem Faktor (`mfa`, `otp`, `hwk` …) – ohne ihn lehnt das AddOn jede Anmeldung ab;
+  - Claim **`roles`** mit `admin` bzw. `redaktion` (das AddOn fordert den Scope `openid email profile roles` an) und `email`.
+  Der Agentur Hub liefert all das; bei anderen Anbietern Rollen-Claim und `amr` dort einrichten.
+- Für die Überwachung: der öffentliche Ed25519-Schlüssel des Dienstes (`ed25519:…`).
+- Ausgehende Verbindungen vom Webserver zum Hub (https). Steht der Hub im eigenen Netz, `KLXM_HUB_ALLOW_PRIVATE_NETWORK=1` setzen.
+
+### Einrichtung im Hub
+
+1. Verwalten → **Instanz registrieren**: System „REDAXO 6“, Adresse der Website, Backend-Pfad (meist `/redaxo`).
+2. Adressen prüfen – sie müssen **exakt** denen im Kasten „Adressen für den Hub“ des AddOns entsprechen (Redirect-URI,
+   Einstieg, Status, nach dem Abmelden; Tabelle unter „Einrichtung“).
+3. Client-ID und Client-Geheimnis notieren (werden **einmal** angezeigt), Personen mit Rolle `admin` oder `redaktion` freigeben.
+4. Unter Einstellungen → Agentur Hub den öffentlichen **Überwachungsschlüssel** kopieren.
+
+Ein anderer Anbieter: Client mit vertraulicher Authentifizierung anlegen, die Redirect-URI aus dem AddOn exakt registrieren,
+PKCE S256 verlangen, `roles` und `amr` ins ID-Token geben.
+
+### Einstellungen im AddOn
+
+AddOns → Agentur Hub → Einstellungen:
+
+| Feld | Wert |
+|---|---|
+| Name | Beschriftung des Links auf der Anmeldeseite (Standard „Agentur Hub“) |
+| Issuer | z. B. `https://hub.example.org/hub` – genau so, wie der Hub ihn nennt (ohne `/` am Ende) |
+| Client-ID, Client-Geheimnis | aus dem Hub; das Geheimnis alternativ über `KLXM_HUB_CLIENT_SECRET` |
+| Rolle für `redaktion` | REDAXO-Rolle für Freigaben mit Rolle `redaktion` |
+| Konto bei erster Anmeldung anlegen | an (Standard) oder aus |
+| Anmeldung über den Anbieter anbieten | einschalten – beim Speichern prüft das AddOn die Discovery, sonst bleibt es aus |
+| Überwachung | Schlüssel `ed25519:…` (je Zeile einer, höchstens 10), „Signierte Status-Abfrage erlauben“ |
+
+### Prüfen
+
+- Kasten „Adressen für den Hub“ ohne Warnung (sonst `REX_BASE_URL` setzen); die Adressen stehen gleich im Hub.
+- Anmeldeseite des Backends: Link „Mit Agentur Hub anmelden“ erscheint; Anmeldung mit einem freigegebenen Konto,
+  danach unter AddOns → Agentur Hub → Agentur-Konten sichtbar.
+- Im Hub „Öffnen“ meldet direkt an; „Jetzt prüfen“ zeigt die Ampel. Gelb wegen „Integrität: nicht geprüft“ ist bei REDAXO
+  erwartbar (keine Integritätsprüfung) und lässt sich im Hub als bekannt bestätigen.
+- Ohne Netz: `php bin/console klxm_hub:selftest`.
+- Fehlersuche: Systemprotokoll von REDAXO, Zeilen `klxm_hub: login-denied reason=…` bzw. `klxm_hub: monitor-denied reason=…`.
 
 ## Agentur-Konten
 
@@ -55,8 +109,19 @@ einbinden (siehe unten „Einrichtung auf einem Server“).
   Anmeldung. Die Rechte werden bei **jeder** Anmeldung abgeglichen.
 - Vorhandene Benutzer werden **nie übernommen** (gleicher Login → Anmeldung abgelehnt). Bekommt ein Agentur-Konto
   lokal ein Passwort, lehnt der Hub-Zugang es ab.
+- **Nur über den Hub:** Eine Sitzung eines Agentur-Kontos ohne Passwort, die per Passkey entstanden ist, beendet das
+  AddOn sofort (Protokoll `login-denied reason=passkey`) – sonst wirkte ein Entzug im Hub nicht, solange das Konto lokal
+  einen Passkey hat.
 - **Sperren:** AddOns → Agentur Hub → Agentur-Konten → „Sperren“ (oder Status in der Benutzerverwaltung). Laufende
   Sitzungen enden sofort. Löschen über die Benutzerverwaltung – die Zuordnung verschwindet mit.
+
+## Selbstauskunft (`klxm-instance-v1`)
+
+`GET /.well-known/klxm-studio` liefert Name der Installation (`REX_INSTANCE_NAME`), Redirect-URI, Einstieg, Adresse nach
+dem Abmelden und Status-Adresse (`"system": "redaxo6"`) – damit „Adressen ermitteln“ im Hub sie selbst übernimmt.
+`404`, solange weder Anmeldung (Issuer oder Client-ID) noch Überwachung eingerichtet ist. Keine Versionen, keine
+Schlüssel, keine Personendaten. Die Adresse funktioniert, wenn das Frontend Adressen ohne Datei an `index.php` gibt
+(Umschreibregel); sonst liefert `GET /index.php?rex-api-call=klxm_hub_instance` denselben Inhalt.
 
 ## Sicherheit
 
@@ -147,8 +212,8 @@ scp klxm_hub.tgz user@host:
 # auf dem Server (Projekt im Ordner ~/httpdocs)
 mkdir -p ~/src/klxm_hub && tar xzf ~/klxm_hub.tgz -C ~/src/klxm_hub
 cd ~/httpdocs
-composer config repositories.klxm_hub '{"type":"path","url":"../src/klxm_hub","options":{"symlink":false,"versions":{"klxm/klxm_hub":"0.1.3"}}}'
-composer require klxm/klxm_hub:0.1.3 --no-dev
+composer config repositories.klxm_hub '{"type":"path","url":"../src/klxm_hub","options":{"symlink":false,"versions":{"klxm/klxm_hub":"0.2.0"}}}'
+composer require klxm/klxm_hub:0.2.0 --no-dev
 php bin/console migrate && php bin/console cache:clear
 ```
 
