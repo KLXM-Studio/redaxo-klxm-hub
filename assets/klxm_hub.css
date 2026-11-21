@@ -1,0 +1,85 @@
+/* KLXM Hub – nur eigene Klassen (klxm-hub-…), Farben aus den Variablen des Backends (hell/dunkel). */
+
+/* Anmeldeseite: Knopf unter dem Formular */
+.klxm-hub-login {
+    padding: 0 var(--rex-gutter, 1rem) var(--rex-gutter, 1rem);
+}
+
+.klxm-hub-login-or {
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    margin: 0 0 0.75em;
+    color: var(--rex-color-text-muted);
+    font-size: var(--rex-font-size-small, 0.875em);
+}
+
+.klxm-hub-login-or::before,
+.klxm-hub-login-or::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid var(--rex-color-border);
+}
+
+.klxm-hub-login-button.rex-button {
+    justify-content: center;
+}
+
+.klxm-hub-login-note {
+    margin: 0.5em 0 0;
+    color: var(--rex-color-text-muted);
+    font-size: var(--rex-font-size-small, 0.875em);
+    text-align: center;
+}
+
+/* Einstellungen */
+.klxm-hub-map {
+    display: inline-block;
+    margin: 0 0.5em 0.5em 0;
+}
+
+.klxm-hub-role.rex-input {
+    display: inline-block;
+    width: auto;
+    min-width: 14em;
+}
+
+.klxm-hub-keys.rex-input,
+.klxm-hub-url,
+.klxm-hub-json {
+    font-family: var(--rex-font-mono, ui-monospace, monospace);
+}
+
+.klxm-hub-url {
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+
+.klxm-hub-addresses th {
+    width: 12em;
+    white-space: nowrap;
+}
+
+.klxm-hub-json {
+    max-height: 28em;
+    overflow: auto;
+    padding: 0.75em 1em;
+    border-radius: var(--rex-radius, 4px);
+    background: var(--rex-color-code-bg, var(--rex-color-surface-muted));
+    color: var(--rex-color-code-text, var(--rex-color-text));
+    font-size: var(--rex-font-size-small, 0.875em);
+}
+
+/* Agentur-Konten */
+.klxm-hub-muted {
+    color: var(--rex-color-text-muted);
+}
+
+.klxm-hub-state[data-state="active"] {
+    color: var(--rex-color-success-text);
+}
+
+.klxm-hub-state[data-state="locked"] {
+    color: var(--rex-color-danger-text);
+    font-weight: 600;
+}
