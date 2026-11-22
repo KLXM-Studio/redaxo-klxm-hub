@@ -50,7 +50,7 @@ final class InstanceInfo
     }
 
     /** Name der Installation (REX_INSTANCE_NAME), sonst Host der Website */
-    private static function name(): string
+    public static function name(): string
     {
         $name = '';
         try {

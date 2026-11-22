@@ -2,6 +2,7 @@
 
 namespace Klxm\Hub\Backend;
 
+use Klxm\Hub\Enroll;
 use Klxm\Hub\HubAddon;
 use Klxm\Hub\Log;
 use Klxm\Hub\Monitoring\Status;
@@ -27,6 +28,9 @@ final class SettingsPage
 {
     private const string CSRF = 'klxm_hub_settings';
 
+    /** Eben erzeugter Code (nur in dieser Antwort sichtbar) */
+    private static ?string $code = null;
+
     public static function run(): string
     {
         $out = self::action();
@@ -40,6 +44,19 @@ final class SettingsPage
             . '<div class="rex-field-control">' . $control . ('' !== $note ? '<p class="rex-field-note">' . $note . '</p>' : '') . '</div></div>';
         $check = static fn (string $name, bool $on, string $label): string => '<div class="rex-check"><label><input type="checkbox" name="' . $name . '" value="1"' . ($on ? ' checked' : '') . '> ' . $label . '</label></div>';
         $input = static fn (string $id, string $name, string $value, string $type = 'text', string $extra = ''): string => '<input class="rex-input" type="' . $type . '" id="' . $id . '" name="' . $name . '" value="' . escape($value) . '"' . $extra . '>';
+
+        // ---------------------------------------------------------------- Mit dem Hub verbinden (Einmal-Code)
+        $pend = Enroll::pending();
+        $done = Enroll::done();
+        $body = '<p>' . escape($t('enroll_note')) . '</p>'
+            . (null !== $done ? '<p class="klxm-hub-muted">' . escape($t('enroll_done', (string) $done['issuer'], date('d.m.Y H:i', (int) $done['at']))) . '</p>' : '')
+            . (null !== self::$code ? $field($t('enroll_code'), '<textarea class="rex-input klxm-hub-keys" id="kh-code" rows="3" readonly spellcheck="false">' . escape(self::$code) . '</textarea>', $t('enroll_code_note'), 'kh-code')
+                : (null !== $pend ? '<p class="klxm-hub-muted">' . escape($t('enroll_pending', date('H:i', $pend['expires']))) . '</p>' : ''))
+            . '<form method="post">' . $csrf . '<input type="hidden" name="klxm_hub_do" value="enroll"><div class="rex-button-toolbar">'
+            . '<button type="submit" class="rex-button" data-variant="primary">' . escape(null !== $pend || null !== self::$code ? $t('enroll_new') : $t('enroll_create')) . '</button>'
+            . (null !== $pend || null !== self::$code ? '<button type="submit" class="rex-button" name="klxm_hub_cancel" value="1">' . escape($t('enroll_cancel')) . '</button>' : '')
+            . '</div></form>';
+        $out .= new Section(title: $t('section_enroll'), body: Html::raw($body))->render();
 
         // ---------------------------------------------------------------- Anmeldung
         $roles = '<option value="0">' . escape($t('role_none')) . '</option>';
@@ -112,6 +129,17 @@ final class SettingsPage
             return Message::error(HubAddon::t('csrf'));
         }
         $user = Core::requireUser()->login;
+        if ('enroll' === $do) {
+            if (Request::post('klxm_hub_cancel', 'string', '')) {
+                Enroll::cancel();
+
+                return Message::success(HubAddon::t('enroll_cancelled'));
+            }
+            self::$code = Enroll::create($user);
+            Log::write('info', 'enroll-code', ['by' => $user]);
+
+            return Message::success(HubAddon::t('enroll_created'));
+        }
         if ('monitor' === $do) {
             $in = Request::post('monitor', 'array', []);
             $err = Settings::saveMonitor(!empty($in['enabled']), (string) ($in['keys'] ?? ''), (string) ($in['backup_dir'] ?? ''));

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 (unveröffentlicht)
+
+- Verbinden per Einmal-Code: Einstellungen → „Mit dem Agentur Hub verbinden“ erzeugt einen Code (15 Minuten, einmal). Im Hub unter
+  „Per Code verbinden“ eingefügt, richtet der Hub Anmeldung und Überwachung ein (`POST index.php?rex-api-call=klxm_hub_enroll`,
+  Schritte `hello`/`complete`, Issuer per Discovery geprüft). Fehlversuche je IP begrenzt (`enroll-failed` im Systemprotokoll).
+
 ## 0.2.0 (2026-11-21)
 
 - Selbstauskunft `klxm-instance-v1` unter `/.well-known/klxm-studio` (Rückfall ohne Umschreibregel:
